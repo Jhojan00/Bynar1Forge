@@ -281,11 +281,12 @@ def bottom():
         3, vertical_alignment="center"
     )
 
-    repository_col.button(
+    repository_col.link_button(
         "Repository",
         type="secondary",
         icon=":material/star:",
         use_container_width=True,
+        url="https://github.com/Jhojan00/Bynar1Forge",
     )
     github_col.link_button(
         "Github",

@@ -119,6 +119,6 @@ Below you can explore the model implementation in Python, Rust, and as mathemati
 
 
 # Draw page
-
+initialize()
 explanation()
 code()

@@ -3,3 +3,6 @@ streamlit
 pandas
 plotly
 networkx
+streamlit-extras
+openai
+dotenv

@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit_extras as stx
 from pandas import read_csv
 from pandas import DataFrame
 import numpy as np
@@ -7,6 +8,7 @@ import numpy as np
 from ml_backend.data_handler import process_file
 import ml_backend.draw_graph as dg
 from ml_backend.model import BinaryNeuronalNetwork
+from ml_backend.open_ai_chat import ask_open_ai, add_message
 
 # ---- Global Widgets ---- #
 from ml_backend.global_widgets import initialize
@@ -20,6 +22,8 @@ persistent_vars = [
     "neurons_like",
     "hyperparameters",
     "model",
+    "messages",
+    "messages_ai",
 ]
 
 for key in persistent_vars:
@@ -27,7 +31,7 @@ for key in persistent_vars:
         st.session_state[key] = None
 
 
-persistent_boolean_vars = ["is_training"]
+persistent_boolean_vars = ["is_training", "ai_is_thinking"]
 
 for key in persistent_boolean_vars:
     if key not in st.session_state:
@@ -49,6 +53,12 @@ def get_neuron_chart(neurons, layers):
     return chart
 
 
+def ask_ai(prompt: str, context: tuple):
+    return ask_open_ai(
+        {"role": "user", "content": f"Prompt: {prompt}\n Context: {context}"}
+    )
+
+
 # ---- Introduction ---- #
 
 # region
@@ -64,7 +74,7 @@ def introduction():
     st.divider()
 
     st.markdown("""
-    ## How to Use B1naryForge
+    ## :green[How to Use B1naryForge]
     Upload a `.csv` file with your inputs and expected outputs, select your hyperparameters, and start training.
                     """)
 
@@ -130,8 +140,38 @@ def train_model():
 
 # endregion
 
-# ---- Hyperparameters ---- #
 
+# ---- Chat ---- #
+
+
+# region
+def chat():
+    with st.expander("**:green[Need some help?]** Ask our AI"):
+        message_col, clear_col = st.columns([0.9, 0.1])
+        message = message_col.chat_input(
+            "Ask something", disabled=st.session_state.ai_is_thinking
+        )
+        button = clear_col.button(
+            icon=":material/delete_sweep:",
+            label="",
+        )
+
+        if button:
+            st.session_state.messages = None
+            st.session_state.messages_ai = None
+        if message:
+            add_message((message, "user"))
+            st.session_state.ai_is_thinking = True
+            ask_ai(message, st.session_state.hyperparameters)
+
+        if st.session_state.messages:
+            for msg, sender in st.session_state.messages:
+                with st.chat_message(sender):
+                    st.markdown(msg)
+
+
+# endregion
+# ---- Hyperparameters ---- #
 
 # region
 
@@ -143,10 +183,13 @@ def hyperparameters():
     a bad choice, your model may not learn well.  
     Below, you can see a graphic that helps you understand if the model is
     learning. If the cost didn't go down, try changing your hyperparameters.
+    
+    
+                
                 """)
 
     # Draw select sliders and show the NN's representation
-
+    chat()
     learning_col, cycles_col, neurons_col, layers_col = st.columns(4)
 
     learning_rate = learning_col.select_slider(
@@ -162,7 +205,7 @@ def hyperparameters():
     )
 
     neurons = neurons_col.select_slider(
-        "Neurons (aprox)",
+        "Neurons (approximal)",
         options=[int(x) for x in np.linspace(3, 50, num=43)],
         help="This is an approximation and may contain errors due to structural limitations of the NN.",
         value=5,
@@ -181,7 +224,7 @@ def hyperparameters():
 
     st.plotly_chart(get_neuron_chart(neurons, layers))
 
-    st.session_state.hyperparameters = (learning_rate, cycles)
+    st.session_state.hyperparameters = (learning_rate, cycles, neurons, layers)
 
 
 # endregion
@@ -216,6 +259,7 @@ def start_training():
         )
         st.session_state.model.train()
         st.session_state.is_training = False
+        st.toast("Model trained", icon=":material/network_intelligence:")
 
 
 # endregion
@@ -271,42 +315,6 @@ def test_button_results():
 # endregion
 
 
-# Bottom
-
-# region
-
-
-def bottom():
-    repository_col, github_col, linkedin_col = st._bottom.columns(
-        3, vertical_alignment="center"
-    )
-
-    repository_col.link_button(
-        "Repository",
-        type="secondary",
-        icon=":material/star:",
-        use_container_width=True,
-        url="https://github.com/Jhojan00/Bynar1Forge",
-    )
-    github_col.link_button(
-        "Github",
-        type="secondary",
-        url="https://github.com/Jhojan00",
-        icon=":material/favorite:",
-        use_container_width=True,
-    )
-    linkedin_col.link_button(
-        "LinkedIn",
-        type="secondary",
-        url="https://www.linkedin.com/in/jhojan-alfredo-aguilera-sanchez-60480a303/",
-        icon=":material/business_center:",
-        use_container_width=True,
-    )
-
-
-# endregion
-
-
 # ---- App's start ---- #
 def main():
     initialize()
@@ -316,7 +324,6 @@ def main():
     start_training()
     test_model()
     test_button_results()
-    bottom()
 
 
 if __name__ == "__main__":
